@@ -1,4 +1,6 @@
-const numberFormat = new Intl.NumberFormat('en', { maximumFractionDigits: 10 })
+// Two decimals: hours arrive as exact tenths, but summing hundreds of them in
+// floating point leaves noise like 79892.7999999999 that must not reach the screen.
+const numberFormat = new Intl.NumberFormat('en', { maximumFractionDigits: 2 })
 const dateFormat = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
 
 export const formatNumber = (value: number) => numberFormat.format(value)
