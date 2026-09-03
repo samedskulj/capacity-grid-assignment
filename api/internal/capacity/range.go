@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-// Week is one ISO week (Monday start) clipped to the requested range.
 type Week struct {
 	Start       string `json:"start"`
 	From        string `json:"from"`
@@ -13,13 +12,11 @@ type Week struct {
 	WorkingDays int    `json:"working_days"`
 }
 
-// Hours is allocated vs capacity for one person in one week.
 type Hours struct {
 	Allocated float64 `json:"allocated_hours"`
 	Capacity  float64 `json:"capacity_hours"`
 }
 
-// Person is one team member and their per-week hours in the response.
 type Person struct {
 	ID          int     `json:"id"`
 	Name        string  `json:"name"`
@@ -27,15 +24,11 @@ type Person struct {
 	Weeks       []Hours `json:"weeks"`
 }
 
-// Response is the GET /api/capacity payload.
 type Response struct {
 	Weeks  []Week   `json:"weeks"`
 	People []Person `json:"people"`
 }
 
-// ParseRange validates inclusive from/to dates and builds week columns.
-// Both allocation and capacity count only selected Monday–Friday days.
-// Partial-week capacity is weekly_hours * working_days / 5.
 func ParseRange(fromText, toText string) (time.Time, time.Time, []Week, error) {
 	from, err := time.Parse(time.DateOnly, fromText)
 	if err != nil || from.Year() < 1 {

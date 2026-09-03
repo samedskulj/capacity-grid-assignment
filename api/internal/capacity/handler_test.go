@@ -29,8 +29,6 @@ func TestInvalidRanges(t *testing.T) {
 	}
 }
 
-// Run against the seeded Compose database with DATABASE_URL set.
-// Temporary records are removed; the seeded people are never changed.
 func TestSeededCapacityAndEditing(t *testing.T) {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {

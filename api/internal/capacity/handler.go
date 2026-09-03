@@ -21,8 +21,6 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Date-only params avoid session-timezone shifts from timestamptz → date.
-	// Aggregate assignments once, then include every person/week even with no work.
 	rows, err := h.DB.Query(r.Context(), `
 		WITH days AS (
 			SELECT d::date AS day, date_trunc('week', d::timestamp)::date AS week
