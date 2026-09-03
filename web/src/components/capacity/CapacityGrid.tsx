@@ -65,7 +65,7 @@ export function CapacityGrid({ range }: Props) {
             <p className="error" role="alert">
               {error}
             </p>
-            <button type="button" onClick={() => void reload()}>
+            <button type="button" onClick={reload}>
               Retry
             </button>
           </>

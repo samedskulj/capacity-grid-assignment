@@ -1,67 +1,70 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { fetchCapacity, updateWeeklyHours } from '../api/capacity'
-import type { Capacity, DateRange, Person } from '../api/types'
+import type { DateRange, Person } from '../api/types'
 
+export const capacityKey = (range: DateRange) => ['capacity', range.from, range.to] as const
 
+/** Thrown when the PATCH succeeded but the follow-up refetch did not. */
+class RefreshFailedError extends Error {}
+
+/**
+ * Loads capacity for a range and saves weekly-hours edits.
+ *
+ * After a save the whole range is refetched so every week reflects the new
+ * capacity. The mutation stays pending until that refetch settles; if it
+ * fails the grid shows an error instead of stale totals.
+ */
 export function useCapacity(range: DateRange) {
-  const [data, setData] = useState<Capacity | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
-  const [saving, setSaving] = useState(false)
+  const queryClient = useQueryClient()
+  const queryKey = capacityKey(range)
   const [notice, setNotice] = useState('')
 
-  // One controller per mounted range; aborted on unmount so late responses are ignored.
-  const lifetime = useRef<AbortController | null>(null)
+  const query = useQuery({
+    queryKey,
+    queryFn: ({ signal }) => fetchCapacity(range, signal),
+    retry: false,
+  })
 
-  const load = useCallback(async () => {
-    const signal = lifetime.current?.signal
-    if (!signal) return
-    setLoading(true)
-    setError('')
-    try {
-      const result = await fetchCapacity(range, signal)
-      if (!signal.aborted) setData(result)
-    } catch (cause) {
-      if (!signal.aborted) setError(cause instanceof Error ? cause.message : 'Could not load capacity.')
-    } finally {
-      if (!signal.aborted) setLoading(false)
-    }
-  }, [range.from, range.to])
+  const mutation = useMutation({
+    mutationFn: async ({ person, weeklyHours }: { person: Person; weeklyHours: number }) => {
+      await updateWeeklyHours(person.id, weeklyHours)
+      try {
+        await queryClient.invalidateQueries({ queryKey }, { throwOnError: true })
+      } catch {
+        throw new RefreshFailedError()
+      }
+      return person
+    },
+    onSuccess: person => setNotice(`Saved ${person.name}’s weekly capacity. All weeks are up to date.`),
+  })
 
-  useEffect(() => {
-    const controller = new AbortController()
-    lifetime.current = controller
-    void load()
-    return () => controller.abort()
-  }, [load])
-
+  /** Returns an error message when the save itself failed, otherwise null. */
   async function saveWeeklyHours(person: Person, weeklyHours: number): Promise<string | null> {
-    const signal = lifetime.current?.signal
-    if (!signal || saving) return null
-    setSaving(true)
     setNotice('')
-
-    let saved = false
     try {
-      await updateWeeklyHours(person.id, weeklyHours, signal)
-      saved = true
-      const updated = await fetchCapacity(range, signal)
-      if (signal.aborted) return null
-      setData(updated)
-      setNotice(`Saved ${person.name}’s weekly capacity. All weeks are up to date.`)
+      await mutation.mutateAsync({ person, weeklyHours })
       return null
     } catch (cause) {
-      if (signal.aborted) return null
-      if (saved) {
-        setData(null)
-        setError('Weekly hours were saved, but the grid could not refresh. Retry to load the updated numbers.')
-        return null
-      }
+      if (cause instanceof RefreshFailedError) return null
       return cause instanceof Error ? cause.message : 'Could not confirm the save. Please retry.'
-    } finally {
-      if (!signal.aborted) setSaving(false)
     }
   }
 
-  return { data, loading, error, saving, notice, reload: load, saveWeeklyHours, clearNotice: () => setNotice('') }
+  const refreshFailed = query.isError && mutation.error instanceof RefreshFailedError
+  const error = refreshFailed
+    ? 'Weekly hours were saved, but the grid could not refresh. Retry to load the updated numbers.'
+    : (query.error?.message ?? '')
+
+  return {
+    // Hide retained data when the last refetch failed; stale totals must not look current.
+    data: query.isError ? null : (query.data ?? null),
+    loading: query.isPending,
+    error,
+    saving: mutation.isPending,
+    notice,
+    reload: () => void query.refetch(),
+    saveWeeklyHours,
+    clearNotice: () => setNotice(''),
+  }
 }
