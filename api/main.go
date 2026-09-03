@@ -2,17 +2,22 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"capacity/api/internal/capacity"
+	"capacity/api/internal/httpx"
+	"capacity/api/internal/people"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type server struct {
-	db *pgxpool.Pool
+	db       *pgxpool.Pool
+	capacity *capacity.Handler
+	people   *people.Handler
 }
 
 func main() {
@@ -39,28 +44,29 @@ func main() {
 		log.Fatalf("ping: %v", err)
 	}
 
-	s := &server{db: db}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /api/health", s.handleHealth)
-	mux.HandleFunc("GET /api/capacity", s.handleCapacity)
-	mux.HandleFunc("PATCH /api/people/{id}", s.handleUpdatePerson)
+	s := &server{
+		db:       db,
+		capacity: &capacity.Handler{DB: db},
+		people:   &people.Handler{DB: db},
+	}
 
 	log.Println("listening on :8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	log.Fatal(http.ListenAndServe(":8080", s.routes()))
+}
+
+func (s *server) routes() http.Handler {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/health", s.handleHealth)
+	mux.HandleFunc("GET /api/capacity", s.capacity.Get)
+	mux.HandleFunc("PATCH /api/people/{id}", s.people.UpdateWeeklyHours)
+	return mux
 }
 
 func (s *server) handleHealth(w http.ResponseWriter, r *http.Request) {
-	var people int
-	if err := s.db.QueryRow(r.Context(), `SELECT count(*) FROM people`).Scan(&people); err != nil {
+	var peopleCount int
+	if err := s.db.QueryRow(r.Context(), `SELECT count(*) FROM people`).Scan(&peopleCount); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "people": people})
-}
-
-func writeJSON(w http.ResponseWriter, status int, v any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
+	httpx.WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "people": peopleCount})
 }

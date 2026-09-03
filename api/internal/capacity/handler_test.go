@@ -1,4 +1,4 @@
-package main
+package capacity
 
 import (
 	"context"
@@ -9,8 +9,25 @@ import (
 	"strings"
 	"testing"
 
+	"capacity/api/internal/people"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+func TestInvalidRanges(t *testing.T) {
+	h := &Handler{}
+	for _, query := range []string{
+		"", "from=2026-01-01", "from=2026-02-30&to=2026-03-01",
+		"from=2026-01-05&to=2026-01-04", "from=2026-01-01&to=2027-01-02",
+		"from=0000-01-01&to=0000-01-02",
+	} {
+		recorder := httptest.NewRecorder()
+		h.Get(recorder, httptest.NewRequest("GET", "/api/capacity?"+query, nil))
+		if recorder.Code != 400 {
+			t.Errorf("%q: got %d", query, recorder.Code)
+		}
+	}
+}
 
 // Run against the seeded Compose database with DATABASE_URL set.
 // Temporary records are removed; the seeded people are never changed.
@@ -25,20 +42,23 @@ func TestSeededCapacityAndEditing(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	s := &server{db: db}
-	load := func(from, to string) capacityResponse {
+
+	capacityH := &Handler{DB: db}
+	peopleH := &people.Handler{DB: db}
+	load := func(from, to string) Response {
 		t.Helper()
 		w := httptest.NewRecorder()
-		s.handleCapacity(w, httptest.NewRequest("GET", "/api/capacity?from="+from+"&to="+to, nil))
+		capacityH.Get(w, httptest.NewRequest("GET", "/api/capacity?from="+from+"&to="+to, nil))
 		if w.Code != 200 {
 			t.Fatalf("capacity: %d %s", w.Code, w.Body.String())
 		}
-		var result capacityResponse
+		var result Response
 		if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
 			t.Fatal(err)
 		}
 		return result
 	}
+
 	result := load("2025-12-29", "2026-01-16")
 	var count int
 	if err := db.QueryRow(ctx, `SELECT count(*) FROM people`).Scan(&count); err != nil {
@@ -59,6 +79,7 @@ func TestSeededCapacityAndEditing(t *testing.T) {
 			}
 		}
 	}
+
 	partial := load("2026-01-07", "2026-01-08")
 	if got := partial.People[3].Weeks[0]; got.Allocated != 22 || got.Capacity != 16 {
 		t.Errorf("Dee partial week: %+v, want allocated=22 capacity=16", got)
@@ -69,6 +90,7 @@ func TestSeededCapacityAndEditing(t *testing.T) {
 			t.Errorf("weekend must be zero: %+v", person)
 		}
 	}
+
 	var id int
 	if err := db.QueryRow(ctx, `INSERT INTO people (name, weekly_hours) VALUES ('Capacity integration test', 20) RETURNING id`).Scan(&id); err != nil {
 		t.Fatal(err)
@@ -78,12 +100,13 @@ func TestSeededCapacityAndEditing(t *testing.T) {
 			t.Errorf("cleanup: %v", err)
 		}
 	}()
+
 	for _, hours := range []float64{0, 7.5, 168} {
 		r := httptest.NewRequest("PATCH", fmt.Sprintf("/api/people/%d", id), strings.NewReader(fmt.Sprintf(`{"weekly_hours":%v}`, hours)))
 		r.SetPathValue("id", fmt.Sprint(id))
 		r.Header.Set("Content-Type", "application/json")
 		w := httptest.NewRecorder()
-		s.handleUpdatePerson(w, r)
+		peopleH.UpdateWeeklyHours(w, r)
 		if w.Code != 200 {
 			t.Fatalf("update: %d %s", w.Code, w.Body.String())
 		}
@@ -93,11 +116,12 @@ func TestSeededCapacityAndEditing(t *testing.T) {
 			t.Errorf("update not reflected in capacity: %+v", person)
 		}
 	}
+
 	r := httptest.NewRequest("PATCH", "/api/people/2147483647", strings.NewReader(`{"weekly_hours":40}`))
 	r.SetPathValue("id", "2147483647")
 	r.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	s.handleUpdatePerson(w, r)
+	peopleH.UpdateWeeklyHours(w, r)
 	if w.Code != 404 {
 		t.Errorf("unknown person: got %d", w.Code)
 	}
