@@ -1,9 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { fetchCapacity, updateWeeklyHours } from '../api/capacity'
+import { capacityQuery } from '../api/capacity'
+import { updateWeeklyHours } from '../api/people'
 import type { DateRange, Person } from '../api/types'
-
-export const capacityKey = (range: DateRange) => ['capacity', range.from, range.to] as const
 
 /** Thrown when the PATCH succeeded but the follow-up refetch did not. */
 class RefreshFailedError extends Error {}
@@ -17,14 +16,10 @@ class RefreshFailedError extends Error {}
  */
 export function useCapacity(range: DateRange) {
   const queryClient = useQueryClient()
-  const queryKey = capacityKey(range)
+  const { queryKey } = capacityQuery(range)
   const [notice, setNotice] = useState('')
 
-  const query = useQuery({
-    queryKey,
-    queryFn: ({ signal }) => fetchCapacity(range, signal),
-    retry: false,
-  })
+  const query = useQuery(capacityQuery(range))
 
   const mutation = useMutation({
     mutationFn: async ({ person, weeklyHours }: { person: Person; weeklyHours: number }) => {
