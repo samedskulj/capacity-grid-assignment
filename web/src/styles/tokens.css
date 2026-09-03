@@ -1,0 +1,77 @@
+:root {
+  /* Brand + neutrals */
+  --color-bg: #f5f7f6;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8faf8;
+  --color-surface-cell: #fcfdfc;
+  --color-text: #233637;
+  --color-text-muted: #6a7772;
+  --color-text-faint: #7a887f;
+  --color-border: #dfe6e2;
+  --color-border-soft: #e8ede9;
+  --color-border-strong: #d8e0dd;
+
+  /* Primary (teal green) */
+  --color-primary: #226755;
+  --color-primary-hover: #184e40;
+  --color-primary-ink: #183c32;
+  --color-primary-soft: #eaf1ed;
+  --color-primary-text: #477c69;
+  --color-focus: #4f9e8d;
+
+  /* Status: within capacity */
+  --color-within: #57a98e;
+  --color-within-bar: #64a98d;
+  --color-within-track: #e6eee8;
+  --color-within-text: #355f4b;
+  --color-within-note: #6e8777;
+  --color-notice-bg: #f1f8f4;
+  --color-notice-border: #e5eee8;
+
+  /* Status: over capacity (amber) */
+  --color-over: #d07b57;
+  --color-over-bar: #d48660;
+  --color-over-track: #f4dfd1;
+  --color-over-text: #a9512e;
+  --color-over-bg: #fff3eb;
+  --color-over-bg-soft: #fffaf6;
+  --color-over-border: #efdccc;
+  --color-over-chip-bg: #f5e9de;
+  --color-over-chip-text: #995539;
+  --color-over-selected-border: #b9603e;
+  --color-over-selected-text: #934426;
+  --color-error: #b04528;
+
+  /* Status: idle */
+  --color-idle-text: #98a59b;
+  --color-idle-note: #919d94;
+
+  /* Avatar variants */
+  --color-avatar-2-bg: #f0eaf5;
+  --color-avatar-2-text: #7c6490;
+  --color-avatar-3-bg: #e8eff6;
+  --color-avatar-3-text: #5a7695;
+
+  /* Shape */
+  --radius-sm: 4px;
+  --radius-md: 7px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+
+  /* Type */
+  --font-body: 'Segoe UI', ui-sans-serif, system-ui, sans-serif;
+  --text-xxs: 9px;
+  --text-xs: 10px;
+  --text-sm: 11px;
+  --text-base: 12px;
+  --text-md: 13px;
+  --text-lg: 16px;
+
+  /* Layout */
+  --content-max: 1600px;
+  --header-height: 76px;
+  --person-column-width: 245px;
+  --capacity-column-width: 180px;
+  --week-column-width: 190px;
+  --table-max-height: 580px;
+}
