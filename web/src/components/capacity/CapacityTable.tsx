@@ -43,8 +43,8 @@ export function CapacityTable({
     >
       <table>
         <caption className="sr-only">
-          Allocated hours against capacity for each person and week. Edit weekly capacity using the hours button
-          beside a name.
+          Allocated hours against capacity for each person and week. Edit weekly capacity using the hours button beside
+          a name.
         </caption>
         <thead>
           <tr>

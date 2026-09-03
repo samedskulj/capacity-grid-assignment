@@ -38,7 +38,12 @@ export function RangeForm({ range, onApply }: Props) {
         </label>
         <label>
           To
-          <input type="date" required value={draft.to} onChange={event => setDraft({ ...draft, to: event.target.value })} />
+          <input
+            type="date"
+            required
+            value={draft.to}
+            onChange={event => setDraft({ ...draft, to: event.target.value })}
+          />
         </label>
         <button className="primary" type="submit">
           Apply range
